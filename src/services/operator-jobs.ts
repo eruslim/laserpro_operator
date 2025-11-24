@@ -186,6 +186,8 @@ export async function shipOrder(
   trackingNumber?: string,
   trackingUrl?: string
 ): Promise<void> {
+  console.log('[SHIP ORDER] Input:', { jobId, operatorId, trackingNumber, trackingUrl });
+
   const updateData: any = {
     status: 'shipped',
     shipped_at: new Date().toISOString(),
@@ -200,10 +202,15 @@ export async function shipOrder(
     updateData.tracking_url = trackingUrl;
   }
 
-  const { error} = await supabase
+  console.log('[SHIP ORDER] Update data:', updateData);
+
+  const { error, data } = await supabase
     .from('orders')
     .update(updateData)
-    .eq('id', jobId);
+    .eq('id', jobId)
+    .select();
+
+  console.log('[SHIP ORDER] Result:', { error, data });
 
   if (error) throw error;
 }
