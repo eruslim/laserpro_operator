@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Package, FileText, Clock, Download, Save, ChevronRight } from 'lucide-react';
+import { X, Package, FileText, Clock, Download, Save, ChevronRight, MapPin } from 'lucide-react';
 import {
   type Job,
   type ProductionStatus,
@@ -7,6 +7,7 @@ import {
   addProductionNotes,
   getJobStatusHistory,
   getSignedUrlFromPath,
+  shipOrder,
 } from '../services/operator-jobs';
 
 interface JobDetailsModalProps {
@@ -29,6 +30,8 @@ export default function JobDetailsModal({
   const [designFileUrls, setDesignFileUrls] = useState<Record<string, string>>({});
   const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [trackingUrl, setTrackingUrl] = useState('');
 
   useEffect(() => {
     if (isOpen && job) {
@@ -126,6 +129,27 @@ export default function JobDetailsModal({
     } catch (error) {
       console.error('Error saving notes:', error);
       alert('Failed to save notes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleShipOrder = async () => {
+    if (!job) return;
+
+    if (!trackingNumber && !trackingUrl) {
+      if (!confirm('Ship without tracking information?')) return;
+    }
+
+    try {
+      setSaving(true);
+      await shipOrder(job.id, operatorId, trackingNumber, trackingUrl);
+      alert('Order marked as shipped!');
+      onJobUpdated();
+      onClose();
+    } catch (error) {
+      console.error('Error shipping order:', error);
+      alert('Failed to ship order');
     } finally {
       setSaving(false);
     }
@@ -232,6 +256,56 @@ export default function JobDetailsModal({
             </button>
           </div>
 
+          {/* Shipping Information - Only show when packaging */}
+          {job.status === 'packaging' && job.shipping_address && (
+            <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-600" />
+                Shipping Information
+              </h3>
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Deliver To:
+                </h4>
+                <p className="text-gray-700">{job.shipping_address.name}</p>
+                <p className="text-gray-600">{job.shipping_address.street}</p>
+                <p className="text-gray-600">
+                  {job.shipping_address.city}, {job.shipping_address.state} {job.shipping_address.zip}
+                </p>
+                <p className="text-gray-600">{job.shipping_address.country}</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tracking Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    placeholder="Enter tracking number"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tracking URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={trackingUrl}
+                    onChange={(e) => setTrackingUrl(e.target.value)}
+                    placeholder="https://tracking.courier.com/..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Status History */}
           {statusHistory.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-4">
@@ -268,7 +342,16 @@ export default function JobDetailsModal({
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
-            {currentNextStatus && (
+            {job.status === 'packaging' ? (
+              <button
+                onClick={handleShipOrder}
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-green-400"
+              >
+                <Package className="w-5 h-5" />
+                {saving ? 'Shipping...' : 'Mark as Shipped'}
+              </button>
+            ) : currentNextStatus && (
               <button
                 onClick={() => handleUpdateStatus(currentNextStatus)}
                 disabled={saving}
