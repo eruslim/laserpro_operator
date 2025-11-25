@@ -127,16 +127,35 @@ export async function addProductionNotes(
 export async function getJobStatusHistory(jobId: string): Promise<any[]> {
   const { data, error } = await supabase
     .from('order_status_history')
-    .select(`
-      *,
-      changed_by_user:users(full_name, email)
-    `)
+    .select('*')
     .eq('order_id', jobId)
     .order('created_at', { ascending: false });
 
   if (error) {
     console.warn('Status history not available, continuing without it');
     return [];
+  }
+
+  // Manually fetch user details for each entry
+  if (data && data.length > 0) {
+    const enrichedData = await Promise.all(
+      data.map(async (entry) => {
+        if (entry.changed_by) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('full_name, email')
+            .eq('id', entry.changed_by)
+            .single();
+
+          return {
+            ...entry,
+            changed_by_user: user
+          };
+        }
+        return entry;
+      })
+    );
+    return enrichedData;
   }
 
   return data || [];
