@@ -43,7 +43,7 @@ export async function getAssignedJobs(operatorId: string): Promise<Job[]> {
     .from('order_details_view')
     .select('*')
     .eq('assigned_operator_id', operatorId)
-    .in('status', ['cutting', 'post_processing', 'quality_check', 'packaging', 'in_production'])
+    .in('status', ['cutting', 'post_processing', 'quality_check', 'packaging', 'in_production', 'shipped'])
     .order('assigned_at', { ascending: true });
 
   if (error) {

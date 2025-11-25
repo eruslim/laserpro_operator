@@ -10,7 +10,7 @@ interface JobQueueProps {
 export default function JobQueue({ operatorId, onViewJob }: JobQueueProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'active'>('active');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'to_ship' | 'shipped'>('active');
 
   useEffect(() => {
     loadJobs();
@@ -44,7 +44,9 @@ export default function JobQueue({ operatorId, onViewJob }: JobQueueProps) {
 
   const filteredJobs = jobs.filter(job => {
     if (filter === 'pending') return job.status === 'in_production';
-    if (filter === 'active') return job.status !== 'in_production' && job.status !== 'packaging';
+    if (filter === 'active') return job.status !== 'in_production' && job.status !== 'packaging' && job.status !== 'shipped';
+    if (filter === 'to_ship') return job.status === 'packaging';
+    if (filter === 'shipped') return job.status === 'shipped';
     return true;
   });
 
@@ -54,6 +56,7 @@ export default function JobQueue({ operatorId, onViewJob }: JobQueueProps) {
     post_processing: 'bg-purple-100 text-purple-800',
     quality_check: 'bg-orange-100 text-orange-800',
     packaging: 'bg-green-100 text-green-800',
+    shipped: 'bg-cyan-100 text-cyan-800',
   };
 
   if (loading) {
@@ -73,7 +76,7 @@ export default function JobQueue({ operatorId, onViewJob }: JobQueueProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -102,7 +105,27 @@ export default function JobQueue({ operatorId, onViewJob }: JobQueueProps) {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          In Progress ({jobs.filter(j => j.status !== 'in_production' && j.status !== 'packaging').length})
+          In Progress ({jobs.filter(j => j.status !== 'in_production' && j.status !== 'packaging' && j.status !== 'shipped').length})
+        </button>
+        <button
+          onClick={() => setFilter('to_ship')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            filter === 'to_ship'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          To Be Ship ({jobs.filter(j => j.status === 'packaging').length})
+        </button>
+        <button
+          onClick={() => setFilter('shipped')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            filter === 'shipped'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Shipped ({jobs.filter(j => j.status === 'shipped').length})
         </button>
       </div>
 
